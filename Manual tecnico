@@ -1,0 +1,127 @@
+### Manual Tecnico
+Report_API es un microservicio desarrollado en Python, diseñado para:
+    • Consultar información desde una base de datos.
+    • Transformar los datos en estructuras consumibles por reportes.
+    • Generar archivos PDF o documentos estructurados.
+    • Exponer endpoints REST para solicitar reportes bajo demanda.
+    • Construirse y ejecutarse fácilmente con Docker.
+
+### Estructura del Repositorio
+Report_API/
+├── .github/
+│   └── workflows/
+│       └── docker-publish.yml      # CI/CD para publicar la imagen Docker
+│
+├── Report_APi/
+│   ├── __pycache__/                # Caché de Python (archivos compilados)
+│   │   ├── ReportGenerator.cpython-313.pyc
+│   │   ├── app.cpython-313.pyc
+│   │   ├── data.cpython-313.pyc
+│   │   ├── database.cpython-313.pyc
+│   │   └── encabezado.cpython-313.pyc
+│   │
+│   ├── ReportGenerator.py          # Lógica principal de generación de reportes
+│   ├── app.py                      # Punto de entrada HTTP/REST de la API
+│   ├── data.py                     # Transformación y estructura de datos
+│   ├── database.py                 # Conexión y consultas a la base de datos
+│   ├── encabezado.py               # Funciones para encabezados en PDF/Reportes
+│   ├── Dockerfile                  # Imagen Docker del microservicio
+│   ├── requirements.txt            # Dependencias del proyecto
+│   ├── README.md                   # Documentación principal
+│   └── compose.yaml                # Levantar servicio con Docker Compose
+
+### Diagrama de arquitectura
+flowchart LR
+    Client[Cliente HTTP] --> API[app.py - Report API]
+    API --> DB[database.py<br/>Consultas SQL]
+    API --> Data[data.py<br/>Procesamiento]
+    API --> RG[ReportGenerator.py<br/>Generación de PDF]
+    RG --> Enc[encabezado.py<br/>Armado de encabezados]
+    DB --> SQL[(Base de Datos)]
+
+### Detalle de microservicios y lenguajes
+Lenguaje:
+Python 3.13
+Principales librerías (según requirements.txt):
+| Librería                       | Uso                             |
+| ------------------------------ | ------------------------------- |
+| Flask / FastAPI                | API REST                        |
+| ReportLab                      | Generación de PDF               |
+| PyPDF2                         | Manipulación PDF (si aplica)    |
+| SQLAlchemy / PyODBC / psycopg2 | Conexión a BD                   |
+| requests                       | Integración con otros servicios |
+| python-dotenv                  | Manejo de variables de entorno  |
+
+### Cómo levantar el sistema localmente 
+Requisitos
+ - Python 3.10+
+ - pip
+ - Docker (opcional)
+ - Postgres/SQL Server 
+Instalar dependencias
+   pip install -r requirements.txt
+Ejecutar la API
+   python app.py
+El servicio estará disponible en:
+   http://localhost:8000
+Ejecutar con Docker
+1. Construir imagen
+docker build -t report-api .
+2. Ejecutar el contenedor
+docker run -p 8000:8000 report-api
+Con Docker Compose
+   docker compose -f compose.yaml up --build -d
+
+### Especificación de endpoints por microservicio
+GET /health
+   Verifica que el servicio está funcionando.
+Respuesta:
+{ "status": "ok" }
+POST /generate-report
+Genera un reporte PDF basado en datos enviados por el usuario o consultados automáticamente.
+Body:
+{
+  "id_partido": 25,
+  "tipo": "reporte_final"
+}
+Respuesta:
+   PDF descargable
+   JSON con ruta del archivo
+GET /report/{id}
+Descarga un reporte ya generado.
+
+### Seguridad
+Variables de conexión mediante .env.
+No expone JWT nativo (si se integra con Keycloak u OAuth puedo agregar esa sección).
+Se recomienda:
+  - API Keys
+  - Token Bearer
+  - IP Whitelist para reportes internos
+
+### Flujo interno del proceso de reporte
+    • Cliente solicita un reporte.
+    • app.py recibe la petición.
+    • Se conecta a la BD mediante database.py.
+    • Se estructura y limpia la información con data.py.
+    • ReportGenerator.py arma el documento.
+    • encabezado.py agrega encabezados e imágenes.
+    • Se devuelve el PDF al cliente.
+
+### Posibles errores y soluciones
+-Error: "No database connection"
+-Causa: variables de entorno incorrectas.
+-Solución: verificar .env:
+    DB_HOST=
+    DB_USER=
+    DB_PASS=
+    DB_NAME=
+-Error: "Cannot import ReportLab"
+-Solución:
+    pip install reportlab
+-Error: "PDF generation failed"
+-Causa: datos vacíos.
+-Solución: revisar consulta SQL y parámetros entrantes.
+-Error: "Address already in use"
+-Solución:
+    kill -9 $(lsof -t -i:8000)
+    cambiar puerto en app.py.
